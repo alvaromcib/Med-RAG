@@ -5,7 +5,7 @@ from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 
 def setup_models():
     # 1. Configurar el LLM (El que genera la respuesta)
-    Settings.llm = Ollama(model="llama3.2", request_timeout=300.0)
+    Settings.llm = Ollama(model="llama3", request_timeout=300.0) # "llama3.1"
     
     # 2. Configurar el modelo de Embeddings (El que traduce a números)
     # BGE es uno de los mejores modelos open-source para esto
