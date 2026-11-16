@@ -1,14 +1,13 @@
-# Entorno virtual
 .venv/
 venv/
 __pycache__/
 *.pyc
 
-# Datos y Base de Datos
-storage/
+# Guidelines are copyrighted: download them yourself (see docs/sources.md)
 data/
-
+storage/
 .env
-
-# Otros
+results/run.log
 .DS_Store
+results/eval.json
+results/*.log

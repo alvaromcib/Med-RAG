@@ -1,0 +1,24 @@
+{
+ "es": {
+  "stack": "Una sola ejecución con qwen2.5:7b en local y temperatura 0. Se comprueba el término de referencia y que alguna de las 6 páginas citadas contenga la frase que lo respalda. El test es pequeño (15 + 3 preguntas): sirve para comprobar que funciona, no como benchmark.",
+  "retrieval": "Las dos búsquedas traen el pasaje entre los 6 primeros en todas las preguntas, pero la híbrida lo pone el primero en el 87 % de los casos frente al 60 % con solo vectores densos. Ayuda con términos exactos como «1p/19q», «MGMT» o «BRAF V600E».",
+  "fails": [
+   ["El modelo no sabe de qué guía es cada fragmento", "En una ejecución anterior se abstuvo teniendo la respuesta delante porque el fragmento no decía «ESMO». En un proyecto real añadiría la guía, el año y la sección a cada fragmento."],
+   ["Puede responder con lo que ya sabe", "También en una ejecución anterior acertó una pregunta sin que ninguna página la respaldara. Mostraría un aviso cuando la respuesta no se pueda verificar en las fuentes."],
+   ["Añade detalles de más", "En la pregunta 15 incluye un gen que la guía no menciona. Pediría citas literales y revisión por un profesional antes de usarlo en clínica."],
+   ["Licencias de las guías", "La guía NCCN se retiró porque su licencia prohíbe usarla con IA. En un hospital hay que revisar la licencia de cada documento antes de indexarlo."],
+   ["Lento en CPU", "~2,5 min por respuesta en un portátil. Con una GPU modesta en el servidor del hospital, unos pocos segundos."]
+  ]
+ },
+ "en": {
+  "stack": "A single run with qwen2.5:7b, locally, at temperature 0. Each answer is checked for the reference term and for at least one of the 6 cited pages holding the supporting sentence. The test set is small (15 + 3 questions): a sanity check, not a benchmark.",
+  "retrieval": "Both searches bring the passage into the top 6 for every question, but hybrid search ranks it first in 87 % of cases versus 60 % with dense vectors only. It helps with exact terms such as “1p/19q”, “MGMT” or “BRAF V600E”.",
+  "fails": [
+   ["The model doesn't know which guideline a chunk comes from", "In an earlier run it abstained with the answer in front of it because the chunk didn't say “ESMO”. In a real project I would add the guideline, year and section to every chunk."],
+   ["It can answer from what it already knows", "Also in an earlier run it got a question right with no page backing it. I would show a warning when an answer can't be verified in the sources."],
+   ["It adds extra details", "In question 15 it includes a gene the guideline doesn't mention. I would ask for verbatim quotes and a clinician's review before any clinical use."],
+   ["Guideline licences", "The NCCN guideline was removed because its licence forbids using it with AI. A hospital needs to check each document's licence before indexing it."],
+   ["Slow on CPU", "~2.5 min per answer on a laptop. With a modest GPU on the hospital's server, a few seconds."]
+  ]
+ }
+}

@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Med-RAG: asistente de neurorradiología en local · Álvaro Martín Coll</title>
+<style>/*CSS*/</style>
+<style>
+:root { --accent: #e0607e; }
+.o-hallucinated { background: var(--crit); }
+.ask { display: grid; grid-template-columns: 1fr; gap: 14px; }
+.chat { background: var(--surface-2); border-radius: 14px; padding: 18px 20px; border: 1px solid var(--ring); }
+.chat .q { font-size: 18px; font-weight: 600; margin-bottom: 12px; }
+.chat .a { font-size: 15.5px; color: var(--text-1); line-height: 1.6; }
+.chat .a sup { color: var(--accent); font-weight: 700; }
+.cites { display: grid; gap: 8px; margin-top: 14px; }
+.cite { background: var(--surface); border: 1px solid var(--ring); border-radius: 10px; padding: 10px 12px; font-size: 13px; color: var(--text-2); }
+.cite b { color: var(--accent); font-size: 12px; letter-spacing: .03em; display: block; margin-bottom: 4px; }
+.cite mark { background: color-mix(in srgb, var(--accent) 35%, transparent); color: var(--text-1); border-radius: 3px; padding: 0 2px; }
+.qlist { display: grid; gap: 6px; max-height: 520px; overflow-y: auto; padding-right: 4px; }
+.qi { display: grid; grid-template-columns: 22px 1fr auto; gap: 10px; align-items: center; text-align: left; font: inherit; font-size: 13.5px;
+  background: var(--surface-2); color: var(--text-2); border: 1px solid transparent; border-radius: 10px; padding: 9px 12px; cursor: pointer; }
+.qi:hover { color: var(--text-1); }
+.qi[aria-current="true"] { border-color: var(--accent); color: var(--text-1); }
+.qi .doc { font-size: 11px; color: var(--text-3); }
+.dot { width: 10px; height: 10px; border-radius: 50%; }
+.o-correct { background: var(--good); } .o-unsupported { background: var(--warn); } .o-wrong { background: var(--crit); }
+.o-abstained { background: #8a8a85; } .o-abstained_ok { background: var(--s1); }
+.badge { display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 3px 9px; border-radius: 999px; color: #0b0b0b; margin-bottom: 10px; }
+.why { margin-top: 12px; font-size: 13.5px; color: var(--text-2); background: var(--surface); border-left: 3px solid var(--warn); padding: 8px 12px; border-radius: 0 8px 8px 0; }
+.gold { font-size: 12.5px; color: var(--text-3); margin-top: 10px; }
+.split { display: grid; grid-template-columns: 340px 1fr; gap: 16px; }
+@media (max-width: 860px) { .split { grid-template-columns: 1fr; } .qlist { max-height: 300px; } }
+.stack { display: flex; height: 34px; border-radius: 8px; overflow: hidden; margin: 6px 0 10px; }
+.stack div { display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: #0b0b0b; }
+.mtab td, .mtab th { text-align: right; } .mtab td:first-child, .mtab th:first-child { text-align: left; }
+.mtab tr.best td { color: var(--text-1); font-weight: 600; }
+.fails { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+.fail { background: var(--surface-2); border-radius: 12px; padding: 14px 16px; font-size: 13.5px; color: var(--text-2); }
+.fail b { color: var(--text-1); display: block; margin-bottom: 4px; }
+.mtab td { white-space: nowrap; }
+</style>
+</head>
+<body>
+<header class="hero">
+  <canvas id="bg"></canvas>
+  <div class="wrap">
+    <div class="eyebrow">Demo · RAG local · Neurorradiología y neurooncología</div>
+    <h1>Pregunta a las guías clínicas y recibe la respuesta con su página</h1>
+    <p class="lede">Un asistente que responde dudas de neurorradiología y neurooncología a partir de cinco guías publicadas (OMS 2021, ESMO, EANO y dos criterios de idoneidad del ACR) y muestra la página de la que sale cada respuesta. Funciona entero en un portátil: ninguna pregunta sale del hospital.</p>
+    <div class="tags"><span class="tag">LlamaIndex</span><span class="tag">Qdrant híbrido</span><span class="tag">qwen2.5:7b con Ollama</span><span class="tag">Sin nube</span></div>
+  </div>
+</header>
+<main class="wrap">
+  <section class="kpis" id="kpis"></section>
+
+  <div class="grid">
+    <section class="card reveal">
+      <h2>Pruébalo con las preguntas del test</h2>
+      <p class="sub">18 preguntas clínicas en inglés: 15 con respuesta en las guías y 3 de otras especialidades (cribado de cáncer colorrectal, diabetes, neumonía). Respuestas reales del modelo, ejecutado en un portátil.</p>
+      <div class="controls" id="filters"></div>
+      <div class="split">
+        <div class="qlist" id="qlist"></div>
+        <div id="detail"></div>
+      </div>
+    </section>
+
+    <section class="card span-6 reveal">
+      <h2>Resultado de las 15 preguntas con respuesta</h2>
+      <p class="sub">Cada respuesta se compara con la cifra o el término de referencia y con la página que cita.</p>
+      <div class="stack" id="stack"></div>
+      <div class="legend" id="stack-legend"></div>
+      <p class="note" id="stack-note"></p>
+    </section>
+
+    <section class="card span-6 reveal">
+      <h2>¿Encuentra el pasaje correcto?</h2>
+      <p class="sub">Porcentaje de preguntas cuyo pasaje con la respuesta aparece entre los 6 fragmentos que se pasan al modelo.</p>
+      <table class="mtab"><thead><tr><th>Búsqueda</th><th>1.º</th><th>Top 6</th><th>Guía correcta en top 6</th><th>MRR</th></tr></thead><tbody id="mtab"></tbody></table>
+      <p class="note" id="ret-note"></p>
+    </section>
+
+    <section class="card reveal">
+      <h2>Cómo funciona</h2>
+      <p class="sub">Cuatro pasos, todos en local.</p>
+      <div class="steps">
+        <div class="step"><b>Lectura local de los PDF</b>PyMuPDF convierte cada página en Markdown conservando las tablas (por ejemplo, las de idoneidad del ACR). Nada sale del equipo: antes se usaba un servicio en la nube.</div>
+        <div class="step"><b>Índice híbrido en Qdrant</b>Trozos de 512 tokens con guía y página. Vectores densos (bge-small) para el significado y dispersos (BM25) para términos exactos como «1p/19q» o «IDH».</div>
+        <div class="step"><b>Respuesta con fuente</b>LlamaIndex pasa los 6 trozos más relevantes a qwen2.5:7b (Ollama), que responde solo con ese contexto y dice que no lo sabe si no está.</div>
+        <div class="step"><b>Evaluación</b>Preguntas con la respuesta y la página de referencia comprobadas a mano en cada guía, más preguntas de otras especialidades para ver si se abstiene.</div>
+      </div>
+    </section>
+
+    <section class="card span-6 reveal">
+      <h2>Documentos indexados</h2>
+      <p class="sub">Páginas por guía. Las guías tienen copyright: no están en el repositorio (solo los enlaces) y aquí se muestran solo frases cortas.</p>
+      <div id="docs"></div>
+      <p class="note">ACR Appropriateness Criteria, OMS 2021 (Neuro-Oncology), ESMO 2014 y EANO 2025. La guía NCCN se retiró: su licencia prohíbe usarla con herramientas de IA.</p>
+    </section>
+
+    <section class="card span-6 reveal">
+      <h2>Qué falla y qué haría en un proyecto real</h2>
+      <p class="sub">Los errores tienen un patrón claro.</p>
+      <div class="fails" id="fails"></div>
+    </section>
+  </div>
+
+  <footer class="footer">
+    <div>Demo con guías clínicas publicadas, sin datos de pacientes. Herramienta de apoyo para profesionales: no sustituye el juicio clínico. Código y evaluación: <a href="https://github.com/alvaromcib/Med-RAG">github.com/alvaromcib/Med-RAG</a></div>
+    <a class="cta" href="{{MALT_URL}}">Hablemos en Malt</a>
+  </footer>
+</main>
+<script>/*VIZ*/</script>
+<script>
+const D = /*DATA*/;
+const $ = (id) => document.getElementById(id);
+const S = D.summary, pct = (v) => Math.round(v * 100) + " %";
+const OUT = {
+  correct: ["Correcta y citada", "var(--good)"], unsupported: ["Correcta, sin página que la respalde", "var(--warn)"],
+  wrong: ["Incorrecta", "var(--crit)"], abstained: ["No la encontró", "#8a8a85"], abstained_ok: ["Fuera de las guías: se abstuvo", "var(--s1)"], hallucinated: ["Fuera de las guías: respondió igualmente", "var(--crit)"],
+};
+
+$("kpis").innerHTML = `
+  <div class="kpi hero-kpi"><div class="l">Respuestas correctas y citadas</div><div class="v"><span data-count="${S.correct}">0</span>/${S.n}</div><div class="d">${S.unsupported ? `+${S.unsupported} correcta pero sin página que la respalde` : "con la página que lo respalda"}</div></div>
+  <div class="kpi"><div class="l">Pasaje correcto en 1.ª posición</div><div class="v" data-count="${Math.round(D.retrieval.hybrid["hit@1"] * 100)}" data-suf=" %">0</div><div class="d">búsqueda híbrida (${pct(D.retrieval.default["hit@1"])} solo con vectores densos)</div></div>
+  <div class="kpi"><div class="l">Preguntas de otras especialidades</div><div class="v">${S.oos_abstained}/${S.n_oos}</div><div class="d">respondió «no lo sé con estas guías» en vez de inventar</div></div>
+  <div class="kpi"><div class="l">Tiempo por respuesta</div><div class="v">~${Math.round(S.s_median)} s</div><div class="d">mediana por respuesta, portátil solo CPU</div></div>`;
+Viz.countUp($("kpis"));
+
+// Outcome bar
+const parts = ["correct", "unsupported", "wrong", "abstained"].map((k) => [k, S[k]]);
+$("stack").innerHTML = parts.filter(([, n]) => n).map(([k, n]) =>
+  `<div style="width:${(100 * n) / S.n}%;background:${OUT[k][1]}" title="${OUT[k][0]}: ${n}">${n}</div>`).join("");
+$("stack-legend").innerHTML = parts.map(([k, n]) => `<span><i style="background:${OUT[k][1]};height:10px;width:10px;border-radius:50%"></i>${OUT[k][0]} (${n})</span>`).join("");
+$("stack-note").textContent = D.notes ? D.notes.stack : "";
+
+// Retrieval table
+const names = { default: "Solo vectores densos (bge-small)", hybrid: "Híbrida (densos + BM25)" };
+$("mtab").innerHTML = ["default", "hybrid"].map((m) => {
+  const r = D.retrieval[m];
+  return `<tr class="${m === "hybrid" ? "best" : ""}"><td>${names[m]}</td><td>${pct(r["hit@1"])}</td><td>${pct(r["hit@6"])}</td><td>${pct(r["doc@6"])}</td><td>${r.mrr.toFixed(2)}</td></tr>`;
+}).join("");
+$("ret-note").textContent = D.notes ? D.notes.retrieval : "";
+
+// Docs
+Viz.bars($("docs"), { items: D.corpus.map((d) => ({ label: d.short, value: d.pages })), color: "var(--accent)" });
+
+// Explorer
+const esc = (s) => s.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+const docOf = (a) => a.gold ? a.gold.doc : "Otra especialidad";
+let filter = "all", cur = D.answers.find((a) => a.outcome === "correct")?.id ?? D.answers[0].id;
+const FIL = [["all", "Todas"], ["correct", "Correctas"], ["wrong", "Incorrectas"], ["abstained", "No encontradas"], ["unsupported", "Sin respaldo"], ["abstained_ok", "Otras especialidades"]];
+function renderFilters() {
+  $("filters").innerHTML = FIL.filter(([k]) => k === "all" || D.answers.some((a) => a.outcome === k)).map(([k, l]) => `<button class="chip" aria-pressed="${filter === k}" data-f="${k}">${l}</button>`).join("");
+  $("filters").querySelectorAll("button").forEach((b) => b.onclick = () => { filter = b.dataset.f; renderFilters(); renderList(); });
+}
+function renderList() {
+  const items = D.answers.filter((a) => filter === "all" || a.outcome === filter);
+  if (!items.find((a) => a.id === cur) && items.length) cur = items[0].id;
+  $("qlist").innerHTML = items.map((a) => `<button class="qi" aria-current="${a.id === cur}" data-id="${a.id}">
+      <span class="dot o-${a.outcome}"></span><span>${esc(a.q)}<br><span class="doc">${docOf(a)}</span></span><span></span></button>`).join("");
+  $("qlist").querySelectorAll("button").forEach((b) => b.onclick = () => { cur = +b.dataset.id; renderList(); });
+  renderDetail();
+}
+function renderDetail() {
+  const a = D.answers.find((x) => x.id === cur); if (!a) { $("detail").innerHTML = ""; return; }
+  const key = a.gold ? a.gold.answer_key : null;
+  const tidy = (t) => t.replace(/<\/?sup>/g, "").replace(/\*\*|#{2,} ?|\|?\s*-{3,}\s*\|?|_{1,2}/g, " ").replace(/\s{2,}/g, " ").trim();
+  const hl = (t) => { let h = esc(tidy(t)); if (key) h = h.split(esc(key)).join(`<mark>${esc(key)}</mark>`); return h; };
+  const ans = esc(a.answer).replace(/\[(\d+(?:,\s*\d+)*)\]/g, "<sup>[$1]</sup>");
+  $("detail").innerHTML = `<div class="chat">
+    <span class="badge" style="background:${OUT[a.outcome][1]}">${OUT[a.outcome][0]}</span>
+    <div class="q">${esc(a.q)}</div><div class="a">${ans}</div>
+    ${a.why ? `<div class="why">${esc(a.why.es)}</div>` : ""}
+    ${a.citations.length ? `<div class="cites">${a.citations.map((c) => `<div class="cite"><b>[${c.n}] ${esc(c.cite)}</b>${hl(c.text.slice(0, 900))}${c.text.length > 900 ? "…" : ""}</div>`).join("")}</div>` : ""}
+    <div class="gold">${a.gold ? `Respuesta de referencia: <b>${esc(key)}</b> en ${a.gold.doc}` : "Las guías indexadas no cubren esta pregunta."} · ${Math.round(a.s)} s en CPU</div></div>`;
+}
+renderFilters(); renderList();
+$("fails").innerHTML = (D.notes?.fails || []).map(([h, t]) => `<div class="fail"><b>${h}</b>${t}</div>`).join("");
+
+const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); } }), { threshold: .1 });
+document.querySelectorAll(".reveal").forEach((e) => io.observe(e));
+
+// Hero background: passages lighting up as a query sweeps
+(function () {
+  const c = $("bg"), x = c.getContext("2d"); let w, h, t = 0;
+  const fit = () => { w = c.width = c.offsetWidth * devicePixelRatio; h = c.height = c.offsetHeight * devicePixelRatio; };
+  fit(); addEventListener("resize", fit);
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const lines = Array.from({ length: 60 }, (_, i) => ({ y: (i + .5) / 60, x: .45 + Math.random() * .5, l: .05 + Math.random() * .18 }));
+  (function d() {
+    x.clearRect(0, 0, w, h);
+    const sy = (Math.sin(t) * .5 + .5);
+    lines.forEach((L) => {
+      const near = Math.abs(L.y - sy) < .06;
+      x.fillStyle = near ? "rgba(224,96,126,.85)" : "rgba(224,96,126,.14)";
+      x.fillRect(L.x * w, L.y * h, L.l * w, 3 * devicePixelRatio);
+    });
+    t += 0.006; if (!reduce) requestAnimationFrame(d);
+  })();
+})();
+</script>
+</body>
+</html>

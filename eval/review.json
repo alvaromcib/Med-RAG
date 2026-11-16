@@ -1,0 +1,8 @@
+{
+ "10": {"es": "Correcta: la guía del ACR propone la RM con contraste junto con la venografía por RM (MRV) como estudio inicial. El modelo añade la angio-RM con contraste como alternativa, que la guía también menciona.",
+        "en": "Correct: the ACR guideline puts contrast-enhanced MRI together with MR venography (MRV) as the initial study. The model adds contrast-enhanced MRA as an alternative, which the guideline also mentions."},
+ "12": {"es": "Correcta: «noncontrast head CT» es lo mismo que la clave «CT head without contrast». La clave se amplió con ese sinónimo después de una ejecución anterior (se indica en el README).",
+        "en": "Correct: “noncontrast head CT” is the same as the key “CT head without contrast”. The key was widened with that synonym after an earlier run (stated in the README)."},
+ "15": {"es": "Correcta en lo esencial (PTEN, IDH como diana, RET, MTAP y la carga mutacional), pero añade H3F3A, que no figura en la lista de novedades de la actualización: un detalle que un revisor clínico debería detectar.",
+        "en": "Essentially right (PTEN, IDH as a target, RET, MTAP and mutational burden), but it adds H3F3A, which is not in the update's list of new topics: a detail a clinical reviewer should catch."}
+}

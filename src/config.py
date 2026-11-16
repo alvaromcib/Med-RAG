@@ -1,19 +1,18 @@
 # src/config.py
+"""Model settings. Everything runs locally: the LLM through Ollama and the embedding model on CPU."""
+import os
+
 from llama_index.core import Settings
-from llama_index.llms.ollama import Ollama
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
+from llama_index.llms.ollama import Ollama
+
+LLM_MODEL = os.getenv("MEDRAG_LLM", "qwen2.5:7b")
+EMBED_MODEL = "BAAI/bge-small-en-v1.5"
+
 
 def setup_models():
-    # 1. Configurar el LLM (El que genera la respuesta)
-    Settings.llm = Ollama(model="llama3", request_timeout=300.0) # "llama3.1"
-    
-    # 2. Configurar el modelo de Embeddings (El que traduce a números)
-    # BGE es uno de los mejores modelos open-source para esto
-    Settings.embed_model = HuggingFaceEmbedding(
-        model_name="BAAI/bge-small-en-v1.5"
-    )
-    
-    # 3. Tamaño del trozo de texto (Chunk)
-    # 512 tokens es un estándar equilibrado para medicina
-    Settings.chunk_size = 512
+    Settings.llm = Ollama(model=LLM_MODEL, request_timeout=900.0, temperature=0,
+                          context_window=8192)
+    Settings.embed_model = HuggingFaceEmbedding(model_name=EMBED_MODEL)
+    Settings.chunk_size = 512          # tokens per chunk
     Settings.chunk_overlap = 50

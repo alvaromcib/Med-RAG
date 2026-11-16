@@ -1,0 +1,37 @@
+[
+ {
+  "file": "ACR_cerebrovascular_disease.pdf",
+  "short": "ACR Cerebrovascular",
+  "title": "ACR Appropriateness Criteria · Cerebrovascular Disease",
+  "category": "01_Imaging_Protocols",
+  "pages": 28
+ },
+ {
+  "file": "Headache.pdf",
+  "short": "ACR Headache",
+  "title": "ACR Appropriateness Criteria · Headache",
+  "category": "01_Imaging_Protocols",
+  "pages": 23
+ },
+ {
+  "file": "The_2021_WHO_Classification_of_Tumors_of_the_Centr.pdf",
+  "short": "WHO CNS5 2021",
+  "title": "WHO Classification of CNS Tumours, 5th ed. (summary)",
+  "category": "02_Classification",
+  "pages": 21
+ },
+ {
+  "file": "High_Grade_Malignant_Glioma.pdf",
+  "short": "ESMO HGG 2014",
+  "title": "ESMO guideline · High-grade glioma",
+  "category": "03_Treatment",
+  "pages": 9
+ },
+ {
+  "file": "Updated-eano-guideline-on-rational-molecular-testing-of-gliomas-glioneuronal-and-neuronal-tumors-i.pdf",
+  "short": "EANO 2025",
+  "title": "EANO guideline · Molecular testing of gliomas (Update 1)",
+  "category": "03_Treatment",
+  "pages": 7
+ }
+]
